@@ -1,0 +1,33 @@
+name: Add date
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  check:
+    if: ${{ !contains(github.event.head_commit.message, '[FORMAT]') }}
+    name: Check Commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get Push File
+        id: push-file
+        run: |
+          diff_files=$(git diff --name-status HEAD~1 | grep ".md$" | grep "^A" | cut -c 3-)
+          echo "# diff_files: ${diff_files}"
+          if [ -n "$diff_files" ]; then echo "::set-output name=add::true"; fi
+          echo "::set-output name=file::${{ github.workspace }}/$(git diff --name-status HEAD~1 | grep ".md$" | grep "^A" | cut -c 3-)"
+      - name: Git Commit
+        if: steps.push-file.outputs.add == 'true'
+        run: |
+          echo ${{ steps.push-file.outputs.file }}
+          sed -i "/^date:/s/.*/date: `date "+%Y-%m-%d %H:%M:%S"`/g" ${{ steps.push-file.outputs.file }}
+          git add .
+          git config --global user.email ${{ secrets.EMAIL }}
+          git config --global user.name ${{ secrets.USER_NAME }}
+          git commit -am "[FORMAT] Add date"
+          git push origin HEAD:main
