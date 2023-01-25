@@ -1,0 +1,78 @@
+name: Update hugo content
+
+on:
+  workflow_run:
+    workflows: ["Add date"]
+    types:
+      - completed
+
+jobs:
+  hugo-format-setting:
+    name: Check Commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get Push File
+        id: push-file
+        run: |
+          diff_files=$(git diff --name-status HEAD~1 | grep ".md$" | grep "^M" | cut -c 3-)
+          echo "# diff_files: ${diff_files}"
+          if [ -n "$diff_files" ]; then echo "::set-output name=change::true"; fi
+          echo "::set-output name=file::${{ github.workspace }}/$(git diff --name-status HEAD~1 | grep ".md$" | grep "^M" | cut -c 3-)"
+      - name: Set up Python 3.8
+        if: steps.push-file.outputs.change == 'true'
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+          
+      - name: Install dependencies
+        if: steps.push-file.outputs.change == 'true'
+        working-directory: apod
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Setting content and Git Commit
+        if: steps.push-file.outputs.change == 'true'
+        env:
+          APOD_API_KEY: ${{ secrets.APOD_API_KEY }}
+        run: |
+          dir=$(dirname ${{ steps.push-file.outputs.file }})
+          content="content"
+          filename="index.md"
+          title=$(basename ${{ steps.push-file.outputs.file }} .md)
+          mkdir -p ${dir}/${content}/${title}
+          cp -r ${dir}/.git ${dir}/${content}
+          cd ${dir}/${content}
+          git fetch origin
+          git checkout hugo-content
+          mv ${{ steps.push-file.outputs.file }} ${dir}/${content}/${title}/${filename}
+          check_file=${dir}/${content}/${title}/feature.jpg
+          python3 ../apod/apod.py ${dir}/${content}/${title}/feature.jpg
+          git add --all
+          git config --global user.email ${{ secrets.EMAIL }}
+          git config --global user.name ${{ secrets.USER_NAME }}
+          git commit -am "[POST] Add Hugo Post"
+          git push origin hugo-content
+  Update:
+    needs: hugo-format-setting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: ${{ github.repository_owner }}/keea.github.io
+          token: ${{ secrets.PRIVATE_TOKEN_GITHUB }}
+      - name: Pull & update submodules recursively
+        run: |
+          git submodule update --init --recursive
+          git submodule update --recursive --remote
+      - name: Commit
+        run: |
+          git config user.email ${{ secrets.EMAIL }}
+          git config user.name ${{ secrets.USER_NAME }}
+          git add --all
+          git commit -m "📝 Update Post" || echo "No changes to commit"
+          git push
