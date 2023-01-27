@@ -1,6 +1,6 @@
 ---
 title: HackMD 글을 Hugo 형태로 변경
-date: 
+date: 2023-01-27 10:46:23
 categories: blog
 tags: ["blog"]
 ---
