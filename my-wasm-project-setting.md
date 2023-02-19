@@ -1,6 +1,6 @@
 ---
 title: 나의 WASM 프로젝트 세팅
-date: 
+date: 2023-02-19 10:00:23
 categories: 
 tags: ["wasm", "emscripten", "c++"]
 ---
