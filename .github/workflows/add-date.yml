@@ -25,7 +25,7 @@ jobs:
         if: steps.push-file.outputs.add == 'true'
         run: |
           echo ${{ steps.push-file.outputs.file }}
-          sed -i "/^date:/s/.*/date: `TZ=Asia/Seoul date "+%Y-%m-%d %H:%M:%S"`/g" ${{ steps.push-file.outputs.file }}
+          sed -i "/^date:/s/.*/date: `TZ=GMT+9 date "+%Y-%m-%d %H:%M:%S %z"`/g" ${{ steps.push-file.outputs.file }}
           git add .
           git config --global user.email ${{ secrets.EMAIL }}
           git config --global user.name ${{ secrets.USER_NAME }}
